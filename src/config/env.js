@@ -24,6 +24,8 @@ module.exports = {
     authDir: process.env.AUTH_DIR || 'auth',
     menuBanner: path.join(assetsPath, 'images', 'banner.jpeg'),
     huTaoStickerImage: path.join(assetsPath, 'images', 'Hu Tao.jpeg'),
+    huTaoCallStickerGif: path.join(assetsPath, 'images', 'hu-tao.gif'),
+    errorStickerImage: path.join(assetsPath, 'images', '_.jpeg'),
     stickerFont: process.env.STICKER_FONT_PATH || '/usr/share/fonts/liberation/LiberationSans-Regular.ttf',
   },
   sticker: {

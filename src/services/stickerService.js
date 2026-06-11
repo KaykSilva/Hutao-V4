@@ -57,6 +57,40 @@ async function sendHuTaoSticker(sock, from) {
   }
 }
 
+async function sendHuTaoCallSticker(sock, from) {
+  if (!fs.existsSync(paths.huTaoCallStickerGif)) return;
+
+  const outputPath = createTempFilePath('hutao-call-sticker', 'webp');
+
+  try {
+    await convertVideoToSticker(paths.huTaoCallStickerGif, outputPath);
+    const stickerBuffer = await fs.promises.readFile(outputPath);
+    await sock.sendMessage(from, { sticker: stickerBuffer });
+  } catch (error) {
+    console.error('Falha ao enviar figurinha de chamada da Hu Tao:', getErrorMessage(error));
+  } finally {
+    await removeTempFile(outputPath);
+  }
+}
+
+async function sendErrorSticker(sock, from, quotedMessage) {
+  if (!fs.existsSync(paths.errorStickerImage)) return false;
+
+  const outputPath = createTempFilePath('hutao-error-sticker', 'webp');
+
+  try {
+    await convertImageToSticker(paths.errorStickerImage, outputPath);
+    const stickerBuffer = await fs.promises.readFile(outputPath);
+    await sock.sendMessage(from, { sticker: stickerBuffer }, quotedMessage ? { quoted: quotedMessage } : undefined);
+    return true;
+  } catch (error) {
+    console.error('Falha ao enviar figurinha de erro:', getErrorMessage(error));
+    return false;
+  } finally {
+    await removeTempFile(outputPath);
+  }
+}
+
 function isVideoTooLong(mediaMessage) {
   const seconds = mediaMessage.message.videoMessage?.seconds || 0;
   return seconds > sticker.maxVideoSeconds;
@@ -65,5 +99,7 @@ function isVideoTooLong(mediaMessage) {
 module.exports = {
   createSticker,
   isVideoTooLong,
+  sendErrorSticker,
+  sendHuTaoCallSticker,
   sendHuTaoSticker,
 };
