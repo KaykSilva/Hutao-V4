@@ -23,6 +23,9 @@ function buildMenuText() {
     `*${bot.prefix}sticker* ou *${bot.prefix}s*`,
     'Cria figurinha de imagem ou video.',
     '',
+    `*${bot.prefix}dono*`,
+    'Testa o reconhecimento do dono.',
+    '',
     `_Digite ${bot.prefix} antes do comando para usar._`,
   ].join('\n');
 }

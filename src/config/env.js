@@ -1,12 +1,19 @@
 const path = require('path');
 
 const assetsPath = path.join(__dirname, '..', 'assets');
+const ownerNumbers = (process.env.OWNER_NUMBERS || process.env.OWNER_NUMBER || '5598981895794')
+  .split(',')
+  .map((number) => number.replace(/\D/g, ''))
+  .filter(Boolean);
 
 module.exports = {
   bot: {
     name: process.env.BOT_NAME || 'Hutao V4',
     prefix: process.env.BOT_PREFIX || '!',
     enableRichMenu: process.env.ENABLE_RICH_MENU === 'true',
+  },
+  owner: {
+    numbers: ownerNumbers,
   },
   paths: {
     authDir: process.env.AUTH_DIR || 'auth',

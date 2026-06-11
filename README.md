@@ -22,6 +22,12 @@ cp .env.example .env
 npm start
 ```
 
+Para rodar em desenvolvimento com restart automatico ao salvar arquivos:
+
+```bash
+npm run dev
+```
+
 4. Escaneie o QR Code pelo WhatsApp:
 
 WhatsApp > Aparelhos conectados > Conectar um aparelho.
@@ -32,6 +38,7 @@ WhatsApp > Aparelhos conectados > Conectar um aparelho.
 - `!ping` testa se o bot esta online.
 - `!echo texto` repete uma mensagem.
 - `!sticker` ou `!s` cria figurinha de imagem ou video.
+- `!dono` testa se o bot reconhece voce como dono.
 
 Para criar figurinha, envie uma imagem/video com o comando na legenda ou responda uma imagem/video com `!s`.
 
@@ -52,6 +59,32 @@ src/
 Para adicionar um comando, crie um arquivo em `src/commands/` exportando `{ name, aliases, execute }` e registre em `src/commands/index.js`.
 
 Para consumir APIs externas, prefira criar um service em `src/services/` e chamar esse service dentro do comando. Assim os comandos ficam finos e a integracao fica facil de testar ou trocar depois.
+
+## Dono do bot
+
+Configure seu numero no `.env` usando codigo do pais e DDD, somente numeros:
+
+```bash
+OWNER_NUMBER=5599999999999
+```
+
+Tambem e possivel liberar mais de um dono:
+
+```bash
+OWNER_NUMBERS=5599999999999,5588888888888
+```
+
+Para restringir um comando ao dono, adicione `ownerOnly: true` no arquivo do comando. Exemplo:
+
+```js
+const meuComando = {
+  name: 'admin',
+  ownerOnly: true,
+  async execute(context) {
+    // ...
+  },
+};
+```
 
 ## Sessao
 
