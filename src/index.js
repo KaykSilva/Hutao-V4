@@ -1,16 +1,21 @@
 require('dotenv').config();
 
 const fs = require('fs');
+const os = require('os');
 const path = require('path');
+const { execFile } = require('child_process');
+const { promisify } = require('util');
 const qrcode = require('qrcode-terminal');
 const pino = require('pino');
 const {
   default: makeWASocket,
   DisconnectReason,
+  downloadMediaMessage,
   fetchLatestBaileysVersion,
   useMultiFileAuthState,
 } = require('@whiskeysockets/baileys');
 
+const execFileAsync = promisify(execFile);
 const PREFIX = process.env.BOT_PREFIX || '!';
 const BOT_NAME = process.env.BOT_NAME || 'Hutao V4';
 const ENABLE_RICH_MENU = process.env.ENABLE_RICH_MENU === 'true';
@@ -78,6 +83,13 @@ async function startBot() {
 
         case 'menu':
           await sendMenu(sock, from, message);
+          break;
+
+        case 'sticker':
+        case 's':
+        case 'figurinha':
+        case 'f':
+          await sendSticker(sock, from, message);
           break;
 
         case 'echo':
@@ -178,6 +190,9 @@ function buildMenuText() {
     `*${PREFIX}echo <texto>*`,
     'Repete a mensagem enviada.',
     '',
+    `*${PREFIX}sticker* ou *${PREFIX}s*`,
+    'Cria figurinha de imagem ou video.',
+    '',
     `_Digite ${PREFIX} antes do comando para usar._`,
   ].join('\n');
 }
@@ -196,6 +211,155 @@ function buildMenuContextInfo() {
 
 function getErrorMessage(error) {
   return error?.message || error?.output?.payload || error;
+}
+
+async function sendSticker(sock, from, message) {
+  const mediaMessage = getStickerSourceMessage(message, from);
+
+  if (!mediaMessage) {
+    await sock.sendMessage(
+      from,
+      {
+        text: [
+          'Envie uma imagem/video com o comando na legenda.',
+          '',
+          `Ou responda uma imagem/video com *${PREFIX}s*.`,
+        ].join('\n'),
+      },
+      { quoted: message }
+    );
+    return;
+  }
+
+  const mediaType = getMediaType(mediaMessage.message);
+  if (!mediaType) {
+    await sock.sendMessage(from, { text: 'Use esse comando em uma imagem ou video.' }, { quoted: message });
+    return;
+  }
+
+  if (mediaType === 'videoMessage') {
+    const seconds = mediaMessage.message.videoMessage?.seconds || 0;
+    if (seconds > 10) {
+      await sock.sendMessage(
+        from,
+        { text: 'Para figurinha animada, envie um video de ate 10 segundos.' },
+        { quoted: message }
+      );
+      return;
+    }
+  }
+
+  await sock.sendMessage(from, { text: 'Criando figurinha...' }, { quoted: message });
+
+  const inputExt = mediaType === 'imageMessage' ? 'jpg' : 'mp4';
+  const inputPath = path.join(os.tmpdir(), `hutao-sticker-${Date.now()}-${Math.random()}.${inputExt}`);
+  const outputPath = path.join(os.tmpdir(), `hutao-sticker-${Date.now()}-${Math.random()}.webp`);
+
+  try {
+    const buffer = await downloadMediaMessage(mediaMessage, 'buffer', {});
+    await fs.promises.writeFile(inputPath, buffer);
+
+    if (mediaType === 'imageMessage') {
+      await convertImageToSticker(inputPath, outputPath);
+    } else {
+      await convertVideoToSticker(inputPath, outputPath);
+    }
+
+    const sticker = await fs.promises.readFile(outputPath);
+    await sock.sendMessage(from, { sticker }, { quoted: message });
+  } catch (error) {
+    console.error('Falha ao criar figurinha:', getErrorMessage(error));
+    await sock.sendMessage(from, { text: 'Nao consegui criar essa figurinha.' }, { quoted: message });
+  } finally {
+    await removeTempFile(inputPath);
+    await removeTempFile(outputPath);
+  }
+}
+
+function getStickerSourceMessage(message, remoteJid) {
+  if (getMediaType(unwrapMessage(message.message))) {
+    return {
+      key: message.key,
+      message: unwrapMessage(message.message),
+    };
+  }
+
+  const content = unwrapMessage(message.message);
+  const quotedMessage = content.extendedTextMessage?.contextInfo?.quotedMessage;
+
+  if (!quotedMessage || !getMediaType(unwrapMessage(quotedMessage))) return null;
+
+  const contextInfo = content.extendedTextMessage.contextInfo;
+
+  return {
+    key: {
+      remoteJid,
+      id: contextInfo.stanzaId,
+      participant: contextInfo.participant,
+    },
+    message: unwrapMessage(quotedMessage),
+  };
+}
+
+function getMediaType(content) {
+  if (content?.imageMessage) return 'imageMessage';
+  if (content?.videoMessage) return 'videoMessage';
+  return null;
+}
+
+async function convertImageToSticker(inputPath, outputPath) {
+  await execFileAsync('ffmpeg', [
+    '-y',
+    '-i',
+    inputPath,
+    '-vf',
+    'scale=512:512:force_original_aspect_ratio=decrease,pad=512:512:(ow-iw)/2:(oh-ih)/2:color=#00000000',
+    '-vcodec',
+    'libwebp',
+    '-lossless',
+    '0',
+    '-compression_level',
+    '6',
+    '-q:v',
+    '70',
+    '-preset',
+    'picture',
+    outputPath,
+  ]);
+}
+
+async function convertVideoToSticker(inputPath, outputPath) {
+  await execFileAsync('ffmpeg', [
+    '-y',
+    '-t',
+    '10',
+    '-i',
+    inputPath,
+    '-vf',
+    'fps=15,scale=512:512:force_original_aspect_ratio=decrease,pad=512:512:(ow-iw)/2:(oh-ih)/2:color=#00000000',
+    '-vcodec',
+    'libwebp',
+    '-loop',
+    '0',
+    '-an',
+    '-vsync',
+    '0',
+    '-q:v',
+    '60',
+    '-preset',
+    'default',
+    outputPath,
+  ]);
+}
+
+async function removeTempFile(filePath) {
+  try {
+    await fs.promises.unlink(filePath);
+  } catch (error) {
+    if (error.code !== 'ENOENT') {
+      console.error('Falha ao remover arquivo temporario:', filePath, getErrorMessage(error));
+    }
+  }
 }
 
 startBot().catch((error) => {

@@ -31,6 +31,11 @@ WhatsApp > Aparelhos conectados > Conectar um aparelho.
 - `!menu` mostra o menu.
 - `!ping` testa se o bot esta online.
 - `!echo texto` repete uma mensagem.
+- `!sticker` ou `!s` cria figurinha de imagem ou video.
+
+Para criar figurinha, envie uma imagem/video com o comando na legenda ou responda uma imagem/video com `!s`.
+
+Videos devem ter ate 10 segundos.
 
 ## Sessao
 
