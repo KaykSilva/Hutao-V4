@@ -24,8 +24,18 @@ const MENU_BANNER = fs.existsSync(MENU_BANNER_PATH) ? fs.readFileSync(MENU_BANNE
 const HU_TAO_STICKER_PATH = path.join(__dirname, 'assets', 'images', 'Hu Tao.jpeg');
 const HU_TAO_STICKER_TEXT = 'Feito chefe';
 const STICKER_FONT_PATH = '/usr/share/fonts/liberation/LiberationSans-Regular.ttf';
+const RECONNECT_BASE_DELAY_MS = 5_000;
+const RECONNECT_MAX_DELAY_MS = 60_000;
+
+let reconnectAttempts = 0;
+let reconnectTimeout = null;
+let isStarting = false;
+let currentSocket = null;
 
 async function startBot() {
+  if (isStarting) return;
+
+  isStarting = true;
   const { state, saveCreds } = await useMultiFileAuthState('auth');
   const { version } = await fetchLatestBaileysVersion();
 
@@ -37,6 +47,9 @@ async function startBot() {
     browser: [BOT_NAME, 'Chrome', '1.0.0'],
   });
 
+  currentSocket = sock;
+  isStarting = false;
+
   sock.ev.on('creds.update', saveCreds);
 
   sock.ev.on('connection.update', ({ connection, lastDisconnect, qr }) => {
@@ -46,6 +59,7 @@ async function startBot() {
     }
 
     if (connection === 'open') {
+      reconnectAttempts = 0;
       console.log(`${BOT_NAME} conectado com sucesso.`);
     }
 
@@ -53,13 +67,15 @@ async function startBot() {
       const statusCode = lastDisconnect?.error?.output?.statusCode;
       const shouldReconnect = statusCode !== DisconnectReason.loggedOut;
 
-      console.log('Conexao encerrada.', {
+      currentSocket = null;
+      console.log('Conexao encerrada:', {
         statusCode,
+        reason: getErrorMessage(lastDisconnect?.error),
         shouldReconnect,
       });
 
       if (shouldReconnect) {
-        startBot();
+        scheduleReconnect();
       } else {
         console.log('Sessao desconectada. Apague a pasta auth e conecte novamente.');
       }
@@ -115,6 +131,27 @@ async function startBot() {
       await sock.sendMessage(from, { text: 'Ocorreu um erro ao executar esse comando.' });
     }
   });
+}
+
+function scheduleReconnect() {
+  if (reconnectTimeout) return;
+
+  reconnectAttempts += 1;
+  const delay = Math.min(RECONNECT_BASE_DELAY_MS * reconnectAttempts, RECONNECT_MAX_DELAY_MS);
+
+  console.log(`Tentando reconectar em ${Math.round(delay / 1000)}s...`);
+
+  reconnectTimeout = setTimeout(() => {
+    reconnectTimeout = null;
+
+    if (currentSocket || isStarting) return;
+
+    startBot().catch((error) => {
+      isStarting = false;
+      console.error('Erro ao reconectar:', getErrorMessage(error));
+      scheduleReconnect();
+    });
+  }, delay);
 }
 
 function getMessageText(message) {
@@ -213,7 +250,10 @@ function buildMenuContextInfo() {
 }
 
 function getErrorMessage(error) {
-  return error?.message || error?.output?.payload || error;
+  if (!error) return undefined;
+  if (error.output?.payload?.message) return error.output.payload.message;
+  if (error.message) return error.message;
+  return error;
 }
 
 async function sendSticker(sock, from, message) {
@@ -408,6 +448,7 @@ async function removeTempFile(filePath) {
 }
 
 startBot().catch((error) => {
-  console.error('Erro ao iniciar o bot:', error);
-  process.exit(1);
+  isStarting = false;
+  console.error('Erro ao iniciar o bot:', getErrorMessage(error));
+  scheduleReconnect();
 });
