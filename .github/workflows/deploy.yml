@@ -59,7 +59,15 @@ jobs:
           mkdir -p ~/.ssh
           printf '%s\n' "$VPS_SSH_KEY" | tr -d '\r' > ~/.ssh/deploy_key
           chmod 600 ~/.ssh/deploy_key
-          ssh-keyscan -T 10 -p "${VPS_PORT:-22}" "$VPS_HOST" >> ~/.ssh/known_hosts || true
+
+          SSH_PORT="${VPS_PORT:-22}"
+          if ! timeout 20 bash -c "cat < /dev/null > /dev/tcp/$VPS_HOST/$SSH_PORT"; then
+            echo "Nao foi possivel conectar em $VPS_HOST:$SSH_PORT a partir do GitHub Actions."
+            echo "Confira VPS_HOST, VPS_PORT, firewall da VPS e se o SSH esta escutando nessa porta."
+            exit 1
+          fi
+
+          ssh-keyscan -T 10 -p "$SSH_PORT" "$VPS_HOST" >> ~/.ssh/known_hosts || true
 
       - name: Deploy
         env:
@@ -73,6 +81,7 @@ jobs:
 
           ssh -i ~/.ssh/deploy_key \
             -o StrictHostKeyChecking=accept-new \
+            -o ConnectTimeout=20 \
             -o ServerAliveInterval=30 \
             -p "${VPS_PORT:-22}" \
             "$VPS_USER@$VPS_HOST" \
