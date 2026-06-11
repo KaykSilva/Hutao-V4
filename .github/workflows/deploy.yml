@@ -39,6 +39,7 @@ jobs:
           APP_DIR: ${{ secrets.APP_DIR }}
         run: |
           set -e
+          APP_DIR="${APP_DIR:-/var/www/hutao-v4}"
 
           if [ -z "$VPS_SSH_KEY" ]; then
             echo "Secret VPS_SSH_KEY nao foi configurado."
@@ -55,11 +56,6 @@ jobs:
             exit 1
           fi
 
-          if [ -z "$APP_DIR" ]; then
-            echo "Secret APP_DIR nao foi configurado."
-            exit 1
-          fi
-
           mkdir -p ~/.ssh
           printf '%s\n' "$VPS_SSH_KEY" | tr -d '\r' > ~/.ssh/deploy_key
           chmod 600 ~/.ssh/deploy_key
@@ -73,6 +69,8 @@ jobs:
           APP_DIR: ${{ secrets.APP_DIR }}
           REPOSITORY: ${{ github.repository }}
         run: |
+          APP_DIR="${APP_DIR:-/var/www/hutao-v4}"
+
           ssh -i ~/.ssh/deploy_key \
             -o StrictHostKeyChecking=accept-new \
             -o ServerAliveInterval=30 \
