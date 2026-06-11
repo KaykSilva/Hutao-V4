@@ -1,5 +1,7 @@
 require('dotenv').config();
 
+const fs = require('fs');
+const path = require('path');
 const qrcode = require('qrcode-terminal');
 const pino = require('pino');
 const {
@@ -11,6 +13,9 @@ const {
 
 const PREFIX = process.env.BOT_PREFIX || '!';
 const BOT_NAME = process.env.BOT_NAME || 'Hutao V4';
+const ENABLE_RICH_MENU = process.env.ENABLE_RICH_MENU === 'true';
+const MENU_BANNER_PATH = path.join(__dirname, 'assets', 'images', 'banner.jpeg');
+const MENU_BANNER = fs.existsSync(MENU_BANNER_PATH) ? fs.readFileSync(MENU_BANNER_PATH) : undefined;
 
 async function startBot() {
   const { state, saveCreds } = await useMultiFileAuthState('auth');
@@ -72,18 +77,7 @@ async function startBot() {
           break;
 
         case 'menu':
-          await sock.sendMessage(
-            from,
-            {
-              text: [
-                `*${BOT_NAME}*`,
-                '',
-                `${PREFIX}ping - testa se o bot esta online`,
-                `${PREFIX}echo <texto> - repete uma mensagem`,
-              ].join('\n'),
-            },
-            { quoted: message }
-          );
+          await sendMenu(sock, from, message);
           break;
 
         case 'echo':
@@ -109,7 +103,7 @@ async function startBot() {
 }
 
 function getMessageText(message) {
-  const content = message.message;
+  const content = unwrapMessage(message.message);
 
   return (
     content.conversation ||
@@ -118,6 +112,90 @@ function getMessageText(message) {
     content.videoMessage?.caption ||
     ''
   ).trim();
+}
+
+function unwrapMessage(content) {
+  return (
+    content?.ephemeralMessage?.message ||
+    content?.viewOnceMessage?.message ||
+    content?.viewOnceMessageV2?.message ||
+    content?.documentWithCaptionMessage?.message ||
+    content ||
+    {}
+  );
+}
+
+async function sendMenu(sock, from, quotedMessage) {
+  const caption = buildMenuText();
+
+  if (ENABLE_RICH_MENU) {
+    try {
+      await sock.sendMessage(
+        from,
+        {
+          image: MENU_BANNER || { url: MENU_BANNER_PATH },
+          caption,
+          contextInfo: buildMenuContextInfo(),
+        },
+        { quoted: quotedMessage }
+      );
+      return;
+    } catch (error) {
+      console.error('Falha ao enviar menu com preview rico:', getErrorMessage(error));
+    }
+  }
+
+  try {
+    await sock.sendMessage(
+      from,
+      {
+        image: MENU_BANNER || { url: MENU_BANNER_PATH },
+        caption,
+      },
+      { quoted: quotedMessage }
+    );
+    return;
+  } catch (error) {
+    console.error('Falha ao enviar menu com imagem:', getErrorMessage(error));
+  }
+
+  await sock.sendMessage(from, { text: caption }, { quoted: quotedMessage });
+}
+
+function buildMenuText() {
+  return [
+    `*${BOT_NAME.toUpperCase()}*`,
+    '_Central de comandos_',
+    '',
+    '*Status*',
+    'Online',
+    `Prefixo: *${PREFIX}*`,
+    '',
+    '*Comandos*',
+    `*${PREFIX}ping*`,
+    'Testa a conexao do bot.',
+    '',
+    `*${PREFIX}echo <texto>*`,
+    'Repete a mensagem enviada.',
+    '',
+    `_Digite ${PREFIX} antes do comando para usar._`,
+  ].join('\n');
+}
+
+function buildMenuContextInfo() {
+  return {
+    externalAdReply: {
+      title: BOT_NAME,
+      body: `Menu principal • Prefixo ${PREFIX}`,
+      mediaType: 1,
+      thumbnail: MENU_BANNER,
+      renderLargerThumbnail: true,
+    },
+  };
+}
+
+function getErrorMessage(error) {
+  return error?.message || error?.output?.payload || error;
 }
 
 startBot().catch((error) => {
