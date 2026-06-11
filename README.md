@@ -40,3 +40,25 @@ Videos devem ter ate 10 segundos.
 ## Sessao
 
 A sessao fica salva na pasta `auth/`. Se quiser conectar outra conta, pare o bot, apague a pasta `auth/` e rode `npm start` novamente.
+
+## Deploy com GitHub Actions e PM2
+
+Na VPS, deixe o repositorio clonado no caminho que sera usado em `APP_DIR`, crie o `.env` e conecte o WhatsApp uma vez.
+
+Tambem instale os requisitos da VPS:
+
+```bash
+sudo apt update
+sudo apt install -y git nodejs npm ffmpeg
+npm install -g pm2
+```
+
+No GitHub, configure estes secrets em `Settings > Secrets and variables > Actions`:
+
+- `VPS_HOST`: IP ou dominio da VPS.
+- `VPS_USER`: usuario SSH.
+- `VPS_PORT`: porta SSH, normalmente `22`.
+- `VPS_SSH_KEY`: chave privada SSH usada para acessar a VPS.
+- `APP_DIR`: caminho do projeto na VPS, por exemplo `/home/ubuntu/Hutao V4`.
+
+Depois, cada push na branch `main` ou `master` faz deploy e reinicia o bot com PM2.
