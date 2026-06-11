@@ -1,32 +1,39 @@
 const fs = require('fs');
 
-const { bot, paths } = require('../config/env');
+const { bot, menu, paths } = require('../config/env');
 
 const menuBanner = fs.existsSync(paths.menuBanner) ? fs.readFileSync(paths.menuBanner) : undefined;
 
 function buildMenuText() {
   return [
-    `*${bot.name.toUpperCase()}*`,
-    '_Central de comandos_',
+    '> 𝙈𝙀𝙉𝙐',
     '',
-    '*Status*',
-    'Online',
-    `Prefixo: *${bot.prefix}*`,
+    '------------------',
+    '>📌 INFORMAÇÕES',
     '',
-    '*Comandos*',
-    `*${bot.prefix}ping*`,
-    'Testa a conexao do bot.',
+    `➤ ${bot.prefix}menu`,
+    `➤ ${bot.prefix}ping`,
+    `➤ ${bot.prefix}info`,
+    `➤ ${bot.prefix}dono`,
+    `➤ ${bot.prefix}wallpaper`,
     '',
-    `*${bot.prefix}echo <texto>*`,
-    'Repete a mensagem enviada.',
+    '---------------',
+    `Prefixo: ${bot.prefix}`,
+    `Dono: ${menu.ownerName}`,
+    `Canal: ${menu.channelUrl}`,
+    `Site: ${menu.siteUrl}`,
+    '---------------',
+  ].join('\n');
+}
+
+function buildTextMenu() {
+  return [
+    buildMenuText(),
     '',
-    `*${bot.prefix}sticker* ou *${bot.prefix}s*`,
-    'Cria figurinha de imagem ou video.',
+    '> OUTROS',
     '',
-    `*${bot.prefix}dono*`,
-    'Testa o reconhecimento do dono.',
-    '',
-    `_Digite ${bot.prefix} antes do comando para usar._`,
+    `➤ ${bot.prefix}echo <texto>`,
+    `➤ ${bot.prefix}sticker`,
   ].join('\n');
 }
 
@@ -43,7 +50,7 @@ function buildMenuContextInfo() {
 }
 
 async function sendMenu(sock, from, quotedMessage) {
-  const caption = buildMenuText();
+  const caption = buildTextMenu();
 
   if (bot.enableRichMenu) {
     try {
