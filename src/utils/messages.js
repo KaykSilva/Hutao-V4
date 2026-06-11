@@ -24,6 +24,7 @@ function unwrapMessage(content) {
 function getMediaType(content) {
   if (content?.imageMessage) return 'imageMessage';
   if (content?.videoMessage) return 'videoMessage';
+  if (content?.stickerMessage) return 'stickerMessage';
   return null;
 }
 

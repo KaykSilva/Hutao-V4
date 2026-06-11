@@ -6,8 +6,9 @@ const { getErrorMessage } = require('../utils/errors');
 const stickerCommand = {
   name: 'sticker',
   aliases: ['s', 'figurinha', 'f'],
-  async execute({ sock, message }) {
+  async execute({ sock, message, args }) {
     const from = message.key.remoteJid;
+    const text = args.join(' ').trim();
     const mediaMessage = getStickerSourceMessage(message, from);
 
     if (!mediaMessage) {
@@ -17,7 +18,7 @@ const stickerCommand = {
           text: [
             'Envie uma imagem/video com o comando na legenda.',
             '',
-            `Ou responda uma imagem/video com *${bot.prefix}s*.`,
+            `Ou responda uma imagem/video/sticker com *${bot.prefix}s texto*.`,
           ].join('\n'),
         },
         { quoted: message }
@@ -27,7 +28,16 @@ const stickerCommand = {
 
     const mediaType = getMediaType(mediaMessage.message);
     if (!mediaType) {
-      await sock.sendMessage(from, { text: 'Use esse comando em uma imagem ou video.' }, { quoted: message });
+      await sock.sendMessage(from, { text: 'Use esse comando em uma imagem, video ou sticker.' }, { quoted: message });
+      return;
+    }
+
+    if (mediaType === 'stickerMessage' && !text) {
+      await sock.sendMessage(
+        from,
+        { text: `Responda a figurinha com *${bot.prefix}s seu texto* para editar.` },
+        { quoted: message }
+      );
       return;
     }
 
@@ -43,9 +53,11 @@ const stickerCommand = {
     await sock.sendMessage(from, { text: 'Criando figurinha...' }, { quoted: message });
 
     try {
-      const stickerBuffer = await createSticker(mediaMessage, mediaType);
+      const stickerBuffer = await createSticker(mediaMessage, mediaType, text);
       await sock.sendMessage(from, { sticker: stickerBuffer }, { quoted: message });
-      await sendHuTaoSticker(sock, from);
+      if (!text) {
+        await sendHuTaoSticker(sock, from);
+      }
     } catch (error) {
       console.error('Falha ao criar figurinha:', getErrorMessage(error));
       await sock.sendMessage(from, { text: 'Nao consegui criar essa figurinha.' }, { quoted: message });

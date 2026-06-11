@@ -33,7 +33,7 @@ function buildTextMenu() {
     '> OUTROS',
     '',
     `➤ ${bot.prefix}echo <texto>`,
-    `➤ ${bot.prefix}sticker`,
+    `➤ ${bot.prefix}sticker <texto>`,
   ].join('\n');
 }
 

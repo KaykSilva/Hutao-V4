@@ -6,12 +6,13 @@ const {
   convertHuTaoImageToSticker,
   convertImageToSticker,
   convertVideoToSticker,
+  editStickerText,
 } = require('./ffmpegService');
 const { getErrorMessage } = require('../utils/errors');
 const { createTempFilePath, removeTempFile } = require('../utils/tempFiles');
 
-async function createSticker(mediaMessage, mediaType) {
-  const inputExt = mediaType === 'imageMessage' ? 'jpg' : 'mp4';
+async function createSticker(mediaMessage, mediaType, text) {
+  const inputExt = getInputExtension(mediaType);
   const inputPath = createTempFilePath('hutao-sticker', inputExt);
   const outputPath = createTempFilePath('hutao-sticker', 'webp');
 
@@ -20,9 +21,11 @@ async function createSticker(mediaMessage, mediaType) {
     await fs.promises.writeFile(inputPath, buffer);
 
     if (mediaType === 'imageMessage') {
-      await convertImageToSticker(inputPath, outputPath);
+      await convertImageToSticker(inputPath, outputPath, text);
+    } else if (mediaType === 'videoMessage') {
+      await convertVideoToSticker(inputPath, outputPath, text);
     } else {
-      await convertVideoToSticker(inputPath, outputPath);
+      await editStickerText(inputPath, outputPath, text);
     }
 
     return await fs.promises.readFile(outputPath);
@@ -30,6 +33,12 @@ async function createSticker(mediaMessage, mediaType) {
     await removeTempFile(inputPath);
     await removeTempFile(outputPath);
   }
+}
+
+function getInputExtension(mediaType) {
+  if (mediaType === 'imageMessage') return 'jpg';
+  if (mediaType === 'videoMessage') return 'mp4';
+  return 'webp';
 }
 
 async function sendHuTaoSticker(sock, from) {
