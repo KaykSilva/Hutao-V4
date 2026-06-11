@@ -37,6 +37,22 @@ Para criar figurinha, envie uma imagem/video com o comando na legenda ou respond
 
 Videos devem ter ate 10 segundos.
 
+## Estrutura
+
+```text
+src/
+  bot/        conexao com WhatsApp, estado e reconexao
+  commands/   comandos do bot e aliases
+  config/     leitura centralizada de variaveis de ambiente
+  handlers/   entrada de eventos e roteamento de mensagens
+  services/   regras reutilizaveis, integracoes e consumo de APIs
+  utils/      helpers pequenos sem dependencia do dominio
+```
+
+Para adicionar um comando, crie um arquivo em `src/commands/` exportando `{ name, aliases, execute }` e registre em `src/commands/index.js`.
+
+Para consumir APIs externas, prefira criar um service em `src/services/` e chamar esse service dentro do comando. Assim os comandos ficam finos e a integracao fica facil de testar ou trocar depois.
+
 ## Sessao
 
 A sessao fica salva na pasta `auth/`. Se quiser conectar outra conta, pare o bot, apague a pasta `auth/` e rode `npm start` novamente.
