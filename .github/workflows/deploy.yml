@@ -98,9 +98,11 @@ jobs:
             git fetch --all --prune
             git reset --hard "origin/${DEPLOY_BRANCH:-production}"
 
-            if ! command -v npm >/dev/null 2>&1; then
+            if ! command -v npm >/dev/null 2>&1 || ! node -e "process.exit(process.versions.node.split('.').map(Number)[0] >= 20 ? 0 : 1)" >/dev/null 2>&1; then
               apt-get update
-              apt-get install -y nodejs npm
+              apt-get install -y ca-certificates curl gnupg
+              curl -fsSL https://deb.nodesource.com/setup_20.x | bash -
+              apt-get install -y nodejs
             fi
 
             if ! command -v ffmpeg >/dev/null 2>&1; then
