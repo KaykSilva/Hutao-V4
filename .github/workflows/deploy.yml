@@ -47,12 +47,25 @@ jobs:
           VPS_USER: ${{ secrets.VPS_USER }}
           VPS_PORT: ${{ secrets.VPS_PORT }}
           APP_DIR: ${{ secrets.APP_DIR }}
+          REPOSITORY: ${{ github.repository }}
         run: |
-          ssh -i ~/.ssh/deploy_key -p "${VPS_PORT:-22}" "$VPS_USER@$VPS_HOST" "bash -s -- '$APP_DIR' '$GITHUB_REF_NAME'" << 'EOF'
+          ssh -i ~/.ssh/deploy_key -p "${VPS_PORT:-22}" "$VPS_USER@$VPS_HOST" "bash -s -- '$APP_DIR' '$GITHUB_REF_NAME' '$REPOSITORY'" << 'EOF'
             set -e
 
             APP_DIR="$1"
             DEPLOY_BRANCH="$2"
+            REPOSITORY="$3"
+
+            if [ ! -d "$APP_DIR/.git" ]; then
+              if [ -d "$APP_DIR" ] && [ "$(find "$APP_DIR" -mindepth 1 -maxdepth 1 | wc -l)" -gt 0 ]; then
+                echo "APP_DIR existe, mas nao e um repositorio Git e nao esta vazio: $APP_DIR"
+                echo "Esvazie a pasta, clone o projeto nela, ou ajuste o secret APP_DIR."
+                exit 1
+              fi
+
+              mkdir -p "$APP_DIR"
+              git clone --branch "${DEPLOY_BRANCH:-production}" "https://github.com/$REPOSITORY.git" "$APP_DIR"
+            fi
 
             cd "$APP_DIR"
             git fetch --all --prune
