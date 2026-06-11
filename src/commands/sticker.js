@@ -1,5 +1,5 @@
 const { bot, sticker } = require('../config/env');
-const { createSticker, isVideoTooLong, sendHuTaoSticker } = require('../services/stickerService');
+const { createSticker, isVideoTooLong, sendErrorSticker, sendHuTaoSticker } = require('../services/stickerService');
 const { getMediaType, unwrapMessage } = require('../utils/messages');
 const { getErrorMessage } = require('../utils/errors');
 
@@ -55,12 +55,11 @@ const stickerCommand = {
     try {
       const stickerBuffer = await createSticker(mediaMessage, mediaType, text);
       await sock.sendMessage(from, { sticker: stickerBuffer }, { quoted: message });
-      if (!text) {
-        await sendHuTaoSticker(sock, from);
-      }
+      await sendHuTaoSticker(sock, from);
     } catch (error) {
       console.error('Falha ao criar figurinha:', getErrorMessage(error));
       await sock.sendMessage(from, { text: 'Nao consegui criar essa figurinha.' }, { quoted: message });
+      await sendErrorSticker(sock, from);
     }
   },
 };
