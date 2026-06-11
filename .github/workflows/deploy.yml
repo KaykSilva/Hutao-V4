@@ -97,6 +97,17 @@ jobs:
             cd "$APP_DIR"
             git fetch --all --prune
             git reset --hard "origin/${DEPLOY_BRANCH:-production}"
+
+            if ! command -v npm >/dev/null 2>&1; then
+              apt-get update
+              apt-get install -y nodejs npm
+            fi
+
+            if ! command -v ffmpeg >/dev/null 2>&1; then
+              apt-get update
+              apt-get install -y ffmpeg
+            fi
+
             npm ci --omit=dev
 
             if ! command -v pm2 >/dev/null 2>&1; then
