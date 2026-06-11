@@ -21,6 +21,9 @@ const BOT_NAME = process.env.BOT_NAME || 'Hutao V4';
 const ENABLE_RICH_MENU = process.env.ENABLE_RICH_MENU === 'true';
 const MENU_BANNER_PATH = path.join(__dirname, 'assets', 'images', 'banner.jpeg');
 const MENU_BANNER = fs.existsSync(MENU_BANNER_PATH) ? fs.readFileSync(MENU_BANNER_PATH) : undefined;
+const HU_TAO_STICKER_PATH = path.join(__dirname, 'assets', 'images', 'Hu Tao.jpeg');
+const HU_TAO_STICKER_TEXT = 'Feito chefe';
+const STICKER_FONT_PATH = '/usr/share/fonts/liberation/LiberationSans-Regular.ttf';
 
 async function startBot() {
   const { state, saveCreds } = await useMultiFileAuthState('auth');
@@ -267,6 +270,7 @@ async function sendSticker(sock, from, message) {
 
     const sticker = await fs.promises.readFile(outputPath);
     await sock.sendMessage(from, { sticker }, { quoted: message });
+    await sendHuTaoSticker(sock, from);
   } catch (error) {
     console.error('Falha ao criar figurinha:', getErrorMessage(error));
     await sock.sendMessage(from, { text: 'Nao consegui criar essa figurinha.' }, { quoted: message });
@@ -314,6 +318,47 @@ async function convertImageToSticker(inputPath, outputPath) {
     inputPath,
     '-vf',
     'scale=512:512:force_original_aspect_ratio=decrease,pad=512:512:(ow-iw)/2:(oh-ih)/2:color=#00000000',
+    '-vcodec',
+    'libwebp',
+    '-lossless',
+    '0',
+    '-compression_level',
+    '6',
+    '-q:v',
+    '70',
+    '-preset',
+    'picture',
+    outputPath,
+  ]);
+}
+
+async function sendHuTaoSticker(sock, from) {
+  if (!fs.existsSync(HU_TAO_STICKER_PATH)) return;
+
+  const outputPath = path.join(os.tmpdir(), `hutao-extra-sticker-${Date.now()}-${Math.random()}.webp`);
+
+  try {
+    await convertHuTaoImageToSticker(HU_TAO_STICKER_PATH, outputPath);
+    const sticker = await fs.promises.readFile(outputPath);
+    await sock.sendMessage(from, { sticker });
+  } catch (error) {
+    console.error('Falha ao enviar figurinha extra da Hu Tao:', getErrorMessage(error));
+  } finally {
+    await removeTempFile(outputPath);
+  }
+}
+
+async function convertHuTaoImageToSticker(inputPath, outputPath) {
+  await execFileAsync('ffmpeg', [
+    '-y',
+    '-i',
+    inputPath,
+    '-vf',
+    [
+      'scale=512:512:force_original_aspect_ratio=decrease',
+      'pad=512:512:(ow-iw)/2:(oh-ih)/2:color=#00000000',
+      `drawtext=fontfile=${STICKER_FONT_PATH}:text='${HU_TAO_STICKER_TEXT}':fontcolor=white:fontsize=46:borderw=4:bordercolor=black:x=(w-text_w)/2:y=h-text_h-34`,
+    ].join(','),
     '-vcodec',
     'libwebp',
     '-lossless',
